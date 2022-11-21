@@ -1,6 +1,4 @@
-package org.example.exception;
-
-import org.example.Command;
+package org.example;
 
 public class LogCommand implements Command {
 

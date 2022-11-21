@@ -1,6 +1,6 @@
 package org.example;
 
-import org.example.exception.LogCommand;
+import org.example.exception.CanNotRotateException;
 import org.example.exception.PropertyNotFoundException;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -12,36 +12,12 @@ public class AppTest {
     @Test
     void queue() {
         Queue<Command> queue = new LinkedList<>();
+
         ExceptionHandler exceptionHandler = new ExceptionHandler(queue);
 
-        queue.add(getMoveCommand());                // команда движения
-        queue.add(getMoveCommandWithException());   // команда движения с исключением
-        queue.add(getRotateCommand());              // команда поворота
-        queue.add(getRotateCommandWithException()); // команда поворота с исключением
+        addCommandsToQueue(queue);
 
-        exceptionHandler.setup(
-                Move.class.getName(),
-                PropertyNotFoundException.class.getName(),
-                (cmd, ex) -> queue.add(new LogCommand(cmd, ex))
-        );
-
-        exceptionHandler.setup(
-                Rotate.class.getName(),
-                PropertyNotFoundException.class.getName(),
-                (Command cmd, Exception ex) -> queue.add(new FirstRetryCommand(cmd))
-        );
-
-        exceptionHandler.setup(
-                FirstRetryCommand.class.getName(),
-                PropertyNotFoundException.class.getName(),
-                (cmd, ex) -> queue.add(new SecondRetryCommand(cmd))
-        );
-
-        exceptionHandler.setup(
-                SecondRetryCommand.class.getName(),
-                PropertyNotFoundException.class.getName(),
-                (cmd, ex) -> queue.add(new LogCommand(cmd, ex))
-        );
+        setupExceptionHandler(queue, exceptionHandler);
 
         while (queue.size() > 0) {
             Command cmd = queue.poll();
@@ -52,6 +28,39 @@ public class AppTest {
                 exceptionHandler.handle(cmd, ex);
             }
         }
+    }
+
+    private static void setupExceptionHandler(Queue<Command> queue, ExceptionHandler exceptionHandler) {
+        exceptionHandler.setup(
+                Move.class.getName(),
+                PropertyNotFoundException.class.getName(),
+                (cmd, ex) -> queue.add(new LogCommand(cmd, ex))
+        );
+
+        exceptionHandler.setup(
+                Rotate.class.getName(),
+                CanNotRotateException.class.getName(),
+                (Command cmd, Exception ex) -> queue.add(new FirstRetryCommand(cmd))
+        );
+
+        exceptionHandler.setup(
+                FirstRetryCommand.class.getName(),
+                CanNotRotateException.class.getName(),
+                (cmd, ex) -> queue.add(new SecondRetryCommand(cmd))
+        );
+
+        exceptionHandler.setup(
+                SecondRetryCommand.class.getName(),
+                CanNotRotateException.class.getName(),
+                (cmd, ex) -> queue.add(new LogCommand(cmd, ex))
+        );
+    }
+
+    private void addCommandsToQueue(Queue<Command> queue) {
+        queue.add(getMoveCommand());                // команда движения
+        queue.add(getMoveCommandWithException());   // команда движения с исключением
+        queue.add(getRotateCommand());              // команда поворота
+        queue.add(getRotateCommandWithException()); // команда поворота с исключением
     }
 
     private UObject getMock() {
@@ -99,8 +108,9 @@ public class AppTest {
     private Command getRotateCommandWithException() {
         UObject uObjectMock = getMock();
 
+        uObjectMock.setProperty("directionsNumber", 8);
         uObjectMock.setProperty("direction", 1);
-        uObjectMock.setProperty("angularVelocity", 12);
+        uObjectMock.setProperty("angularVelocity", 0);
 
         RotateAdapter adapter = new RotateAdapter(uObjectMock);
         return new Rotate(adapter);
