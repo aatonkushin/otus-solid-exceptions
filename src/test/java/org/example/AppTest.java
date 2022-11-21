@@ -11,12 +11,16 @@ import java.util.Queue;
 public class AppTest {
     @Test
     void queue() {
+        // Очередь команд
         Queue<Command> queue = new LinkedList<>();
 
+        // Обработчик исключений
         ExceptionHandler exceptionHandler = new ExceptionHandler(queue);
 
+        // Добавляем команды в очередь
         addCommandsToQueue(queue);
 
+        // Настраиваем обработку исключений
         setupExceptionHandler(queue, exceptionHandler);
 
         while (queue.size() > 0) {
